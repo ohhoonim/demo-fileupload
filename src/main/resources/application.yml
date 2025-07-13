@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: demo-fileupload
+  docker:
+    compose:
+      lifecycle-management: start-only
+  sql:
+    init:
+      mode: always
+  datasource:
+    hikari:
+      jdbc-url: jdbc:postgresql://localhost:5432/fileupload
+      username: postgres
+      password: postgres
+      driver-class-name: org.postgresql.Driver
+
+mybatis:
+  mapper-locations: mapper/**/*.xml
+  type-aliases-package: com.ohhoonim.demo_fileupload
+  type-handlers-package: com.ohhoonim.demo_fileupload.component.handler
+  configuration:
+    default-fetch-size: 100
+    map-underscore-to-camel-case: true
+
+attachFile:
+  upload-path: /tmp/demo-fileupload
+  max-attach-files: 5
