@@ -9,9 +9,9 @@ spring:
       mode: always
   datasource:
     hikari:
-      jdbc-url: jdbc:postgresql://localhost:5432/fileupload
-      username: postgres
-      password: postgres
+      jdbc-url: jdbc:postgresql://localhost:15434/fileupload
+      username: matthew 
+      password: matthew 
       driver-class-name: org.postgresql.Driver
 
 mybatis:

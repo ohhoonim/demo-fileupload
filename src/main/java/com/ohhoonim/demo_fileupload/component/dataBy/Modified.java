@@ -2,11 +2,22 @@ package com.ohhoonim.demo_fileupload.component.dataBy;
 
 import java.time.LocalDateTime;
 
+import com.ohhoonim.demo_fileupload.component.id.Id;
+
 public final class Modified implements DataBy {
 
+    private Id id;
     private String modifier;
     private LocalDateTime modified;
 
+    public Modified() {
+        this.modified= LocalDateTime.now();
+    }
+
+    public Modified(String modifier) {
+        this.modifier= modifier;
+        this.modified = LocalDateTime.now();
+    }
     public String getModifier() {
         return modifier;
     }
@@ -21,6 +32,14 @@ public final class Modified implements DataBy {
 
     public void setModified(LocalDateTime modified) {
         this.modified = modified;
+    }
+
+    public Id getId() {
+        return this.id;
+    }
+
+    public void setId(Id id) {
+        this.id = id ;
     }
 
 }

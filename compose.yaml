@@ -3,7 +3,7 @@ services:
     image: 'postgres:17.2-alpine'
     environment:
       - 'POSTGRES_DB=fileupload'
-      - 'POSTGRES_USER=postgres'
-      - 'POSTGRES_PASSWORD=postgres'
+      - 'POSTGRES_USER=matthew'
+      - 'POSTGRES_PASSWORD=matthew'
     ports:
-      - '5432:5432'
+      - '15434:5432'

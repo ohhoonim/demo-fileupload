@@ -3,6 +3,7 @@
 ## 첨부파일 모델
 
 - AttachFileMapperTest 참고
+- Id, DataBy 
 
 ## 첨부파일 업로드/다운로드
 
