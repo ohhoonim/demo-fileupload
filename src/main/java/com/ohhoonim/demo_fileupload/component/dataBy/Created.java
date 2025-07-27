@@ -2,8 +2,11 @@ package com.ohhoonim.demo_fileupload.component.dataBy;
 
 import java.time.LocalDateTime;
 
+import com.ohhoonim.demo_fileupload.component.id.Id;
+
 public final class Created implements DataBy {
 
+    private Id id;
     private String creator;
     private LocalDateTime created;
 
@@ -31,5 +34,13 @@ public final class Created implements DataBy {
     public void setCreated(LocalDateTime created) {
         this.created = created;
     }
+
+    public Id getId() {
+        return this.id;
+    }
+
+    public void setId(Id id) {
+        this.id = id;
+    } 
 
 }

@@ -2,10 +2,14 @@ package com.ohhoonim.demo_fileupload.attachFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.LocalDateTime;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
 import org.mybatis.spring.boot.test.autoconfigure.MybatisTest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -18,12 +22,14 @@ import com.ohhoonim.demo_fileupload.component.attachFile.AttachFile;
 import com.ohhoonim.demo_fileupload.component.attachFile.AttachFileGroup;
 import com.ohhoonim.demo_fileupload.component.attachFile.AttachFileMapper;
 import com.ohhoonim.demo_fileupload.component.dataBy.Created;
+import com.ohhoonim.demo_fileupload.component.dataBy.Modified;
 import com.ohhoonim.demo_fileupload.component.id.Id;
 
 @Testcontainers
 @RunWith(SpringRunner.class)
 @MybatisTest
 public class AttachFileMapperTest {
+    Logger log = LoggerFactory.getLogger(getClass());
 
     @Container
     @ServiceConnection
@@ -43,7 +49,8 @@ public class AttachFileMapperTest {
                 .path("/temp/image")
                 .capacity(2_000L)
                 .extension("png")
-                .creator(new Created())
+                .creator(new Created("matthew"))
+                .modifier(new Modified("matthew"))
                 .build();
 
         mapper.insertAttachFile(attach);
@@ -53,13 +60,22 @@ public class AttachFileMapperTest {
         assertThat(savedFile.getId().toString()).isEqualTo(id.toString());
         assertThat(savedFile.getExtension().toString()).isEqualTo("png");
 
+        assertThat(savedFile.getCreator()).isInstanceOf(Created.class);
+        var creator= (Created)savedFile.getCreator();
+        assertThat(creator.getCreated()).isBefore(LocalDateTime.now());
+
+        assertThat(savedFile.getModifier()).isInstanceOf(Modified.class);
+        var modifier = (Modified)savedFile.getModifier();
+        assertThat(modifier.getModified()).isBefore(LocalDateTime.now());
+
         mapper.deleteAttachFile(id);
         var deletedFile = mapper.selectAttachFile(id);
         assertThat(deletedFile).isNull();
 
-        // group을 사용하게 되면 group table에서도 삭제해주어야함. 
-        // 다음 테스트 코드 참고
     }
+
+    // group을 사용하게 되면 group table에서도 삭제해주어야함. 
+    // 다음 테스트 코드 참고
 
     @Test
     @DisplayName("이게 첨부파일기능에 대한 메인 로직")

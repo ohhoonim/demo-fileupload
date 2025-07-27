@@ -22,12 +22,37 @@
         )
     </insert>
 
-    <select id="selectAttachFile" resultType="attachFile">
+    <resultMap id="created" type="created">
+        <result property="id" column="id"/>
+        <result property="created" column="created"/>
+        <result property="creator" column="creator"/>
+    </resultMap>
+    <resultMap id="modified" type="modified">
+        <result property="id" column="id"/>
+        <result property="modified" column="modified"/>
+        <result property="modifier" column="modifier"/>
+    </resultMap>
+
+    <resultMap id="attachFile" type="attachFile">
+        <result property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="path" column="path"/>
+        <result property="capacity" column="capacity"/>
+        <result property="extension" column="extension"/>
+        <association property="creator" resultMap="created"/>
+        <association property="modifier" resultMap="modified"/>
+    </resultMap>
+
+    <select id="selectAttachFile" resultMap="attachFile">
         select id
         , name
         , path
         , capacity
         , extension           
+        , created
+        , creator
+        , modified 
+        , modifier 
         from component_attach_file
         where ID = #{id}
     </select>

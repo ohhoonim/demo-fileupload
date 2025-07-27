@@ -90,7 +90,7 @@ public class AttachFileService {
                 FilenameUtils.getBaseName(name),
                 uploadFilePath,
                 multipartFile.getSize(),
-                extension, null);
+                extension, null, null);
 
         attachFiles.add(file);
         attachFileRepository.insertAttachFile(file);

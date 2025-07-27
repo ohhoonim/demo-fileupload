@@ -20,5 +20,6 @@ public class AttachFile {
     private Long capacity;
     private String extension;
     private DataBy creator;
+    private DataBy modifier;
 
 }
