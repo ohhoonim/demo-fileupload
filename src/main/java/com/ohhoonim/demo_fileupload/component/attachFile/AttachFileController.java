@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -18,6 +19,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,16 +42,13 @@ public class AttachFileController {
         this.attachFileService = attachFileService;
     }
 
-    @Value("${attachFile.upload-path}")
-    private String uploadPath;
-
     /**
      * 파일 업로드
      */
     @PostMapping("/upload")
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<List<AttachFile>> upload(@RequestPart(value = "files") List<MultipartFile> files) {
-        return ResponseEntity.ok(attachFileService.uploadFiles(files, uploadPath));
+        return ResponseEntity.ok(attachFileService.uploadFiles(files));
     }
 
     /**
@@ -84,7 +83,8 @@ public class AttachFileController {
      * 멀티 파일 업로더 zip 다운로드
      */
     @GetMapping("/download-zip")
-    public ResponseEntity<Resource> zipDownload(@RequestParam(name = "fileIds") List<String> fileIds) throws IOException {
+    public ResponseEntity<Resource> zipDownload(@RequestParam(name = "fileIds") List<String> fileIds)
+            throws IOException {
         String zipFileName = "files.zip";
         Path zipFilePath = null;
         long contentLength = 0;
@@ -92,7 +92,7 @@ public class AttachFileController {
         try {
             zipFilePath = Files.createTempFile(null, zipFileName); // 임시 파일 생성
             try (OutputStream outputStream = Files.newOutputStream(zipFilePath);
-                 ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+                    ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
 
                 for (String fileId : fileIds) {
                     AttachFile attachFile = attachFileService.getAttachFile(fileId);

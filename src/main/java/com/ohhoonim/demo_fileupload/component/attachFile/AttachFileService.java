@@ -42,19 +42,17 @@ public class AttachFileService {
     private String uploadPath;
 
     @Value("${attachFile.max-attach-files}")
-    private int maxAttacheFiles;
+    private int maxNuberOfFiles;
 
     /**
      * 파일 업로드 
      */
     @Transactional
-    public List<AttachFile> uploadFiles(List<MultipartFile> files, String uploadFilePath) {
-        if (!StringUtils.hasText(uploadFilePath)) {
-            throw new NullPointerException(
-                    "empty upload path. check property in application.yml [constants.file.upload-path]");
+    public List<AttachFile> uploadFiles(List<MultipartFile> files) {
+        if (!StringUtils.hasText(uploadPath)) {
+            throw new NullPointerException("Upload path does not exist");
         }
-
-        getDirPath(uploadFilePath);
+        securePath(uploadPath);
         checkMaxFiles(files);
 
         List<AttachFile> attachFiles = new ArrayList<>();
@@ -66,14 +64,14 @@ public class AttachFileService {
                     .map(String::toLowerCase)
                     .orElseThrow(NullPointerException::new);
 
-            File uploadedFile = new File(uploadFilePath + File.separator + id);
+            File uploadedFile = new File(uploadPath + File.separator + id);
 
             try (InputStream uploadFile = multipartFile.getInputStream();
                     BufferedOutputStream outputStream = new BufferedOutputStream(
                             Files.newOutputStream(uploadedFile.toPath()))) {
 
                 saveFile(uploadFile, outputStream);
-                saveFileInfo(uploadFilePath, attachFiles, multipartFile, id, name, extension);
+                saveFileInfo(uploadPath, attachFiles, multipartFile, id, name, extension);
 
             } catch (IOException e) {
                 log.error("uploadFiles method IOException", e);
@@ -107,13 +105,12 @@ public class AttachFileService {
     }
 
     private void checkMaxFiles(List<MultipartFile> files) {
-        if (files.size() > maxAttacheFiles) {
-            log.error("Maximum number of file uploads exceeded");
-            throw new IllegalArgumentException("Maximum number of file uploads exceeded");
+        if (files.size() > maxNuberOfFiles) {
+            throw new IllegalArgumentException("The number of files that can be uploaded has been exceeded");
         }
     }
 
-    private void getDirPath(String uploadFilePath) {
+    private void securePath(String uploadFilePath) {
         Path dirPath = Paths.get(uploadFilePath);
         if (!Files.exists(dirPath)) {
             try {
