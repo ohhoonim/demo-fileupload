@@ -1,13 +1,10 @@
 package com.ohhoonim.demo_fileupload.component.attachFile;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -20,8 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ServerErrorException;
 
+import com.ohhoonim.demo_fileupload.component.dataBy.Created;
+import com.ohhoonim.demo_fileupload.component.dataBy.Modified;
 import com.ohhoonim.demo_fileupload.component.id.Id;
 
 import lombok.extern.slf4j.Slf4j;
@@ -42,109 +40,113 @@ public class AttachFileService {
     private String uploadPath;
 
     @Value("${attachFile.max-attach-files}")
-    private int maxAttacheFiles;
+    private int maxNuberOfFiles;
 
     /**
      * 파일 업로드 
+     * @param multipart 파일 목록 
+     * @return 업로드된 파일 id 목록
      */
     @Transactional
-    public List<AttachFile> uploadFiles(List<MultipartFile> files, String uploadFilePath) {
-        if (!StringUtils.hasText(uploadFilePath)) {
-            throw new NullPointerException(
-                    "empty upload path. check property in application.yml [constants.file.upload-path]");
+    public List<Id> uploadFiles(List<MultipartFile> files) {
+        // 저장경로 확보
+        securePath();
+
+        if (files.size() > maxNuberOfFiles) {
+            throw new IllegalArgumentException("The number of files that can be uploaded has been exceeded");
         }
+        // 파일 업로드 
+        var attachedFiles = files.stream()
+                .map(f -> {
+                    var filename = f.getOriginalFilename();
+                    var extension = FilenameUtils.getExtension(filename);
+                    var capacity = f.getSize();
+                    var fileId = new Id();
 
-        getDirPath(uploadFilePath);
-        checkMaxFiles(files);
+                    var targetPath = uploadPath + File.separator + fileId;
+                    try {
+                        Files.copy(f.getInputStream(), Paths.get(targetPath));
+                    } catch (IOException e) {
+                        return Optional.empty();
+                    }
+                    return Optional.of(AttachFile.builder()
+                            .id(fileId)
+                            .name(filename)
+                            .path(targetPath)
+                            .capacity(capacity)
+                            .extension(extension)
+                            .build());
+                })
+                .toList();
+        // 업로드된 파일들의 id 정보를 프론트에서 이용할 수 있게 
+        List<Id> uploadedFileIds = attachedFiles.stream()
+                .filter(Optional::isPresent).map(o -> (AttachFile) o.get())
+                .map(f -> {
+                    var attach = AttachFile.builder()
+                            .id(f.getId())
+                            .name(f.getName())
+                            .path(f.getPath())
+                            .capacity(f.getCapacity())
+                            .extension(f.getExtension())
+                            .creator(new Created("app"))
+                            .modifier(new Modified("app")) // 파일 그룹 저장시 업데이트 해주기 
+                            .build();
+                    attachFileRepository.insertAttachFile(attach);
 
-        List<AttachFile> attachFiles = new ArrayList<>();
-
-        for (MultipartFile multipartFile : files) {
-            Id id = new Id();
-            String name = multipartFile.getOriginalFilename();
-            String extension = Optional.ofNullable(FilenameUtils.getExtension(name))
-                    .map(String::toLowerCase)
-                    .orElseThrow(NullPointerException::new);
-
-            File uploadedFile = new File(uploadFilePath + File.separator + id);
-
-            try (InputStream uploadFile = multipartFile.getInputStream();
-                    BufferedOutputStream outputStream = new BufferedOutputStream(
-                            Files.newOutputStream(uploadedFile.toPath()))) {
-
-                saveFile(uploadFile, outputStream);
-                saveFileInfo(uploadFilePath, attachFiles, multipartFile, id, name, extension);
-
-            } catch (IOException e) {
-                log.error("uploadFiles method IOException", e);
-                throw new ServerErrorException(e.getMessage(), e);
-            }
-        }
-        return attachFiles;
+                    return f.getId();
+                })
+                .toList();
+        return uploadedFileIds;
     }
 
-    private void saveFileInfo(String uploadFilePath, List<AttachFile> attachFiles, MultipartFile multipartFile, Id id,
-            String name, String extension) {
-        AttachFile file = new AttachFile(
-                id,
-                FilenameUtils.getBaseName(name),
-                uploadFilePath,
-                multipartFile.getSize(),
-                extension, null, null);
-
-        attachFiles.add(file);
-        attachFileRepository.insertAttachFile(file);
-    }
-
-    private void saveFile(InputStream uploadFile, BufferedOutputStream outputStream) throws IOException {
-        int chunkSize = 1024 * 1024;
-        byte[] buffer = new byte[chunkSize];
-        int bytesRead;
-
-        while ((bytesRead = uploadFile.read(buffer)) != -1) {
-            outputStream.write(buffer, 0, bytesRead);
+    private void securePath() {
+        if (!StringUtils.hasText(uploadPath)) {
+            throw new NullPointerException("Upload path does not exist");
         }
-    }
 
-    private void checkMaxFiles(List<MultipartFile> files) {
-        if (files.size() > maxAttacheFiles) {
-            log.error("Maximum number of file uploads exceeded");
-            throw new IllegalArgumentException("Maximum number of file uploads exceeded");
-        }
-    }
-
-    private void getDirPath(String uploadFilePath) {
-        Path dirPath = Paths.get(uploadFilePath);
-        if (!Files.exists(dirPath)) {
+        var targetDir = Paths.get(uploadPath);
+        if (!Files.exists(targetDir)) {
             try {
-                Files.createDirectories(dirPath);
-                log.info("create directory");
+                Files.createDirectories(targetDir);
             } catch (IOException e) {
-                log.error("uploadFiles method IOException", e);
-                throw new ServerErrorException(e.getMessage(), e);
+                throw new RuntimeException("fail to make upload directory");
             }
         }
     }
 
     /**
-     * 파일 삭제 
+     * 파일 목록 조회(by entityId)
+     * @param entityId
+     * @return
+     */
+    public List<AttachFile> findAttachFiles(String entityId) {
+        return attachFileRepository.selectAttachFiles(Id.valueOf(entityId));
+    }
+
+    /**
+     * 파일 삭제
+     * @param fileIds
      */
     @Transactional
-    public void deleteFiles(Set<String> fileIds) {
-        for (String fileId : fileIds) {
+    public void removeFiles(Set<String> fileIds) {
+        fileIds.stream().forEach(fileId -> {
             try {
                 String filePath = uploadPath + File.separator + fileId;
-                Path copyOfLocation = Paths.get(filePath);
-                Files.deleteIfExists(copyOfLocation);
+                Files.deleteIfExists(Paths.get(filePath));
+
                 attachFileRepository.deleteAttachFileGroupByFileId(Id.valueOf(fileId));
                 attachFileRepository.deleteAttachFile(Id.valueOf(fileId));
             } catch (IOException e) {
-                log.error("deleteFiles method IOException", e);
-                throw new ServerErrorException(e.getMessage(), e);
+                throw new RuntimeException(e.getMessage());
             }
-        }
+        });
     }
 
+    /**
+     * 첨부파일 정보 조회
+     * @param fileId
+     * @return
+     */
     public AttachFile getAttachFile(String fileId) {
         return attachFileRepository.selectAttachFile(Id.valueOf(fileId));
     }
@@ -159,21 +161,6 @@ public class AttachFileService {
 
     public Path getAttachFilePath(AttachFile attachFile) {
         return Paths.get(uploadPath + File.separator + attachFile.getId());
-    }
-
-    // 파일 목록 조회(by entityId)
-    public List<AttachFile> findAttachFiles(String entityId) {
-        return attachFileRepository.selectAttachFiles(Id.valueOf(entityId));
-    }
-
-    // 파일 업로드 대상 객체 ID와 파일 ID를 저장
-    public void inputAttachFileGroup(AttachFileGroup attachFileGroup) {
-        attachFileRepository.insertAttachFileGroup(attachFileGroup);
-    }
-
-    // entityId와 연관된 파일 그룹 삭제
-    public void deleteAttachFileGroup(String entityId) {
-        attachFileRepository.deleteAttachFileGroupByEntityId(Id.valueOf(entityId));
     }
 
 }

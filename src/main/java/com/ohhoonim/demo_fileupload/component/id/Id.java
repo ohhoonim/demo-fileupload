@@ -1,10 +1,11 @@
 package com.ohhoonim.demo_fileupload.component.id;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 import com.github.f4b6a3.ulid.Ulid;
 
-public class Id {
+public class Id implements Serializable {
 
     private UUID id;
 
@@ -24,8 +25,11 @@ public class Id {
         return Ulid.from(id).toString();
     }
 
-
     public static Id valueOf(String ulid) {
         return new Id(ulid);
+    }
+
+    public String getId() {
+        return this.toString();
     }
 }
