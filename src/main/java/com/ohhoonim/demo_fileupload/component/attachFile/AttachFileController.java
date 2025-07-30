@@ -6,20 +6,17 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +26,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.ohhoonim.demo_fileupload.component.id.Id;
 
 /**
  * 파일 처리 API 
@@ -44,15 +43,37 @@ public class AttachFileController {
 
     /**
      * 파일 업로드
+     * @param files
+     * @return
      */
     @PostMapping("/upload")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<List<AttachFile>> upload(@RequestPart(value = "files") List<MultipartFile> files) {
+    public ResponseEntity<List<Id>> upload(@RequestPart(value = "files") List<MultipartFile> files) {
         return ResponseEntity.ok(attachFileService.uploadFiles(files));
     }
 
     /**
+     * 파일 목록 조회
+     */
+    @GetMapping("/{entityId}")
+    public ResponseEntity<List<AttachFile>> searchFiles(@PathVariable String entityId) {
+        return ResponseEntity.ok(attachFileService.findAttachFiles(entityId));
+    }
+
+    /**
+     * 파일삭제 
+     * @param fileIds
+     */
+    @PostMapping("/remove/{fileIds}")
+    @ResponseStatus(HttpStatus.OK)
+    public void delete(@PathVariable(value = "fileIds") Set<String> fileIds) {
+        attachFileService.removeFiles(fileIds);
+    }
+
+    /**
      * 파일 다운로드
+     * @param fileId
+     * @return
      */
     @GetMapping(value = "/download/{fileId}")
     public ResponseEntity<Resource> download(@PathVariable(value = "fileId") String fileId) {
@@ -62,25 +83,32 @@ public class AttachFileController {
 
         String filename = attachFile.getName() + "." + attachFile.getExtension();
         Long contentLength;
+
         try {
             contentLength = Files.size(path);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("not found file");
         }
 
         return ResponseEntity.ok()
                 .headers(httpHeaders -> {
                     httpHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-                    httpHeaders.setContentDisposition(ContentDisposition.builder("attachment")
-                            .filename(filename.replace("+", "%20"), StandardCharsets.UTF_8)
-                            .build());
+                    httpHeaders.setContentDisposition(
+                            ContentDisposition
+                                    .builder("attachment")
+                                    .filename(filename.replace("+", "%20"),
+                                            StandardCharsets.UTF_8)
+                                    .build());
                 })
                 .contentLength(contentLength)
                 .body(resource);
     }
 
     /**
-     * 멀티 파일 업로더 zip 다운로드
+     * zip 다운로드
+     * @param fileIds
+     * @return
+     * @throws IOException
      */
     @GetMapping("/download-zip")
     public ResponseEntity<Resource> zipDownload(@RequestParam(name = "fileIds") List<String> fileIds)
@@ -90,15 +118,12 @@ public class AttachFileController {
         long contentLength = 0;
         Resource zipResource = null;
         try {
-            zipFilePath = Files.createTempFile(null, zipFileName); // 임시 파일 생성
+            zipFilePath = Files.createTempFile(null, zipFileName);
             try (OutputStream outputStream = Files.newOutputStream(zipFilePath);
                     ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
-
                 for (String fileId : fileIds) {
                     AttachFile attachFile = attachFileService.getAttachFile(fileId);
                     Path filePath = attachFileService.getAttachFilePath(attachFile);
-
-                    // 파일을 ZipOutputStream에 추가
                     try (InputStream inputStream = Files.newInputStream(filePath)) {
                         ZipEntry zipEntry = new ZipEntry(attachFile.getName() + "." + attachFile.getExtension());
                         zipOutputStream.putNextEntry(zipEntry);
@@ -117,9 +142,7 @@ public class AttachFileController {
 
             zipResource = new InputStreamResource(Files.newInputStream(zipFilePath));
             contentLength = Files.size(zipFilePath);
-
         } catch (IOException e) {
-            // 모종의 이유로 파일 생성 과정에서에러 발생시 임시 파일 resource 해제
             if (zipFilePath != null) {
                 Files.deleteIfExists(zipFilePath);
             }
@@ -133,28 +156,13 @@ public class AttachFileController {
         return ResponseEntity.ok()
                 .headers(httpHeaders -> {
                     httpHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-                    httpHeaders.setContentDisposition(ContentDisposition.builder("attachment")
-                            .filename(zipFileName, StandardCharsets.UTF_8)
-                            .build());
+                    httpHeaders.setContentDisposition(
+                            ContentDisposition
+                                    .builder("attachment")
+                                    .filename(zipFileName, StandardCharsets.UTF_8)
+                                    .build());
                 })
                 .contentLength(contentLength)
                 .body(zipResource);
-    }
-
-    /**
-     * 파일 목록 조회
-     */
-    @GetMapping("/{entityId}")
-    public ResponseEntity<List<AttachFile>> searchFiles(@PathVariable String entityId) {
-        return ResponseEntity.ok(attachFileService.findAttachFiles(entityId));
-    }
-
-    /**
-     * 파일 삭제
-     */
-    @PostMapping("/remove/{fileIds}")
-    @ResponseStatus(HttpStatus.OK)
-    public void delete(@PathVariable(value = "fileIds") Set<String> fileIds) {
-        attachFileService.deleteFiles(fileIds);
     }
 }

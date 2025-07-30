@@ -13,7 +13,6 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.ohhoonim.demo_fileupload.component.attachFile.AttachFileController;
 import com.ohhoonim.demo_fileupload.component.attachFile.AttachFileService;
@@ -44,5 +43,4 @@ public class AttachFileControllerTest {
                 .assertThat().apply(print())
                 .hasStatusOk();
     }
-
 }

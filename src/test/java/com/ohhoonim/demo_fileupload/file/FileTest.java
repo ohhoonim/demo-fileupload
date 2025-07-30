@@ -12,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.io.FilenameUtils;
 import org.junit.jupiter.api.DisplayName;
@@ -123,7 +125,6 @@ public class FileTest {
         assertThat(targetPath.toFile().length()).isEqualTo(file.length());
     }
 
-
     @Test
     @DisplayName("org.apache.commons.io.FilenameUtils")
     void filenameUtilsTest() {
@@ -132,6 +133,29 @@ public class FileTest {
         assertThat(FilenameUtils.getExtension(filename).isEmpty()).isFalse();
         assertThat(FilenameUtils.getExtension(filename)).isEqualTo("pdf");
 
+    }
+
+    @Test
+    void streamThrowTest() {
+        List<Integer> numbers = List.of(1, 2, 3, 4, 5);
+        List<Optional<?>> results = numbers.stream()
+                .map(num -> {
+                    try {
+                        if (num == 2) {
+                            throw new IOException("number 2 is thrown");
+                        }
+                    } catch (IOException e) {
+                        return Optional.empty();
+                    }
+                    return Optional.of(num);
+                }).toList();
+        assertThat(results).hasSize(5);
+
+        List<Integer> finalResults = results.stream()
+                .filter(r -> r.isPresent())
+                .map(o -> (Integer) o.get())
+                .toList();
+        assertThat(finalResults).hasSize(4);
     }
 }
 
