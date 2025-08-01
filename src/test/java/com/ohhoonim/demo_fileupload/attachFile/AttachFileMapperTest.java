@@ -61,11 +61,11 @@ public class AttachFileMapperTest {
         assertThat(savedFile.getExtension().toString()).isEqualTo("png");
 
         assertThat(savedFile.getCreator()).isInstanceOf(Created.class);
-        var creator= (Created)savedFile.getCreator();
+        var creator = (Created) savedFile.getCreator();
         assertThat(creator.getCreated()).isBefore(LocalDateTime.now());
 
         assertThat(savedFile.getModifier()).isInstanceOf(Modified.class);
-        var modifier = (Modified)savedFile.getModifier();
+        var modifier = (Modified) savedFile.getModifier();
         assertThat(modifier.getModified()).isBefore(LocalDateTime.now());
 
         mapper.deleteAttachFile(id);
@@ -131,7 +131,7 @@ public class AttachFileMapperTest {
         mapper.insertAttachFileGroup(group2);
 
         var attachFilesInEntity = mapper.selectAttachFiles(entityId);
-        assertThat(attachFilesInEntity).hasSize(2); 
+        assertThat(attachFilesInEntity).hasSize(2);
 
         // 삭제할 때는 attach_fie과 attach_file_group 양쪽 모두 삭제해줘야한다 
         // (‼️warning‼️) 순서가 중요하다
@@ -140,7 +140,114 @@ public class AttachFileMapperTest {
         mapper.deleteAttachFile(file1Id);
 
         var attachFilesInEntityAfterDelete = mapper.selectAttachFiles(entityId);
-        assertThat(attachFilesInEntityAfterDelete).hasSize(1); 
+        assertThat(attachFilesInEntityAfterDelete).hasSize(1);
 
     }
 }
+
+/*
+# model
+
+## domain driven desgin
+
+```plantuml 
+@startuml
+skinparam monochrome reverse 
+left to right direction 
+
+class SomeEntity {
+    entityId: Id
+    ---
+    propOne: String
+    propTwo: String
+    creator: DataBy
+}
+
+class AttachFile {
+    fileId: Id
+    ---
+    entityId: Id
+    name: String
+    extension: String
+    capacity: Integer
+    creator: DataBy
+}
+
+SomeEntity "1" -- "*" AttachFile
+
+@enduml
+```
+
+```plantuml 
+@startuml
+skinparam monochrome reverse 
+left to right direction 
+
+class SomeEntity {
+    entityId: Id
+    ---
+    propOne: String
+    propTwo: String
+    creator: DataBy
+}
+
+class EntityAttachFile {
+   entityId: Id
+   fileId: Id 
+   ---
+   creator: DataBy
+}
+
+class AttachFile {
+    fileId: Id
+    ---
+    name: String
+    extension: String
+    capacity: Integer
+    creator: DataBy
+}
+
+SomeEntity "1" -- "*" EntityAttachFile : sticky
+EntityAttachFile "*" -- "1" AttachFile
+
+@enduml
+```
+## attachFile driven desgin
+
+```plantuml 
+@startuml
+skinparam monochrome reverse
+left to right direction 
+
+class SomeEntity {
+    entityId: Id
+    ---
+    propOne: String
+    propTwo: String
+    creator: DataBy
+}
+
+class AttachFileGroup {
+    fileGroupId: Id
+    ---
+    entityId: Id
+    fileId: Id 
+    creator: DataBy
+}
+
+class AttachFile {
+    fileId: Id
+    ---
+    name: String
+    extension: String
+    capacity: Integer
+    creator: DataBy
+}
+
+SomeEntity "1" .. "*" AttachFileGroup : loosely
+AttachFileGroup "*" .. "1" AttachFile : loosely
+
+
+@enduml
+```
+ */
